@@ -7,9 +7,8 @@
 </head>
 <body>
 
-<h1 id="contador">0</h1>
+<h1 id="contador">—</h1>
 <button id="btn">Obtener número</button>
-<pre id="estado" style="white-space:pre-wrap;"></pre>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -21,44 +20,41 @@
     projectId: "contador-2036b",
     storageBucket: "contador-2036b.firebasestorage.app",
     messagingSenderId: "306453517182",
-    appId: "1:306453517182:web:b02fa2edd7dc30b691192f",
-    measurementId: "G-15ZK3W7CLT"
+    appId: "1:306453517182:web:b02fa2edd7dc30b691192f"
   };
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
   const contadorEl = document.getElementById("contador");
-  const estadoEl = document.getElementById("estado");
+
+  function formatear(numero) {
+    return String(numero).padStart(4, "0");
+  }
 
   document.getElementById("btn").addEventListener("click", async () => {
-    estadoEl.textContent = "Pidiendo número...";
+    contadorEl.textContent = "…";
+
     try {
       const ref = doc(db, "contador", "global");
 
-      const nuevo = await runTransaction(db, async (tx) => {
+      const numeroAsignado = await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref);
+        let valor = 0;
 
-        let valorActual = 0;
-        if (snap.exists()) {
-          const data = snap.data();
-          valorActual = (typeof data.valor === "number") ? data.valor : 0;
+        if (snap.exists() && typeof snap.data().valor === "number") {
+          valor = snap.data().valor;
         }
 
-        const siguiente = valorActual + 1;
+        const siguiente = valor + 1;
         tx.set(ref, { valor: siguiente }, { merge: true });
 
-        return { valorActual, siguiente, existe: snap.exists() };
+        return siguiente;
       });
 
-      contadorEl.textContent = String(nuevo.siguiente);
-      estadoEl.textContent =
-        `Doc existe: ${nuevo.existe}\n` +
-        `Valor leído: ${nuevo.valorActual}\n` +
-        `Nuevo valor: ${nuevo.siguiente}\n`;
+      contadorEl.textContent = formatear(numeroAsignado);
     } catch (e) {
       contadorEl.textContent = "N/A";
-      estadoEl.textContent = "ERROR ❌ " + (e?.message || e);
       console.error(e);
     }
   });
