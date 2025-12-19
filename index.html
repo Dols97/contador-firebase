@@ -15,8 +15,6 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getFirestore, doc, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-  console.log("SCRIPT CARGADO ✅");
-
   const firebaseConfig = {
     apiKey: "AIzaSyC8b_vVtpAaCoqf7sopWIPD4Ubr9CdHnQc",
     authDomain: "contador-2036b.firebaseapp.com",
@@ -28,4 +26,43 @@
   };
 
   const app = initializeApp(firebaseConfig);
-  cons
+  const db = getFirestore(app);
+
+  const contadorEl = document.getElementById("contador");
+  const estadoEl = document.getElementById("estado");
+
+  document.getElementById("btn").addEventListener("click", async () => {
+    estadoEl.textContent = "Pidiendo número...";
+    try {
+      const ref = doc(db, "contador", "global");
+
+      const nuevo = await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+
+        let valorActual = 0;
+        if (snap.exists()) {
+          const data = snap.data();
+          valorActual = (typeof data.valor === "number") ? data.valor : 0;
+        }
+
+        const siguiente = valorActual + 1;
+        tx.set(ref, { valor: siguiente }, { merge: true });
+
+        return { valorActual, siguiente, existe: snap.exists() };
+      });
+
+      contadorEl.textContent = String(nuevo.siguiente);
+      estadoEl.textContent =
+        `Doc existe: ${nuevo.existe}\n` +
+        `Valor leído: ${nuevo.valorActual}\n` +
+        `Nuevo valor: ${nuevo.siguiente}\n`;
+    } catch (e) {
+      contadorEl.textContent = "N/A";
+      estadoEl.textContent = "ERROR ❌ " + (e?.message || e);
+      console.error(e);
+    }
+  });
+</script>
+
+</body>
+</html>
