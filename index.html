@@ -9,6 +9,7 @@
 
 <h1 id="contador">—</h1>
 <button id="btn">Obtener número</button>
+<pre id="estado" style="white-space:pre-wrap;"></pre>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -27,39 +28,48 @@
   const db = getFirestore(app);
 
   const contadorEl = document.getElementById("contador");
+  const estadoEl = document.getElementById("estado");
 
-  function formatear(numero) {
-    return String(numero).padStart(6, "0");
+  function formatear4(n) {
+    return String(n).padStart(4, "0");
   }
 
   document.getElementById("btn").addEventListener("click", async () => {
     contadorEl.textContent = "…";
+    estadoEl.textContent = "Pidiendo número...";
 
     try {
       const ref = doc(db, "contador", "global");
 
-      const numeroAsignado = await runTransaction(db, async (tx) => {
+      const info = await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref);
-        let valor = 0;
 
-        if (snap.exists() && typeof snap.data().valor === "number") {
-          valor = snap.data().valor;
-        }
+        const existe = snap.exists();
+        const data = existe ? snap.data() : {};
+        const anterior = (typeof data.valor === "number") ? data.valor : 0;
 
-        const siguiente = valor + 1;
-        tx.set(ref, { valor: siguiente }, { merge: true });
+        const nuevo = anterior + 1;
+        tx.set(ref, { valor: nuevo }, { merge: true });
 
-        return siguiente;
+        return { existe, anterior, nuevo };
       });
 
-      contadorEl.textContent = formatear(numeroAsignado);
+      // Solo mostramos el número asignado (formateado)
+      contadorEl.textContent = formatear4(info.nuevo);
+
+      // Logs detallados
+      estadoEl.textContent =
+        `Doc existe: ${info.existe}\n` +
+        `Valor anterior: ${info.anterior}\n` +
+        `Nuevo valor: ${info.nuevo}\n` +
+        `Mostrado: ${formatear4(info.nuevo)}\n`;
     } catch (e) {
       contadorEl.textContent = "N/A";
-      console.error(e);
+      estadoEl.textContent = "ERROR ❌ " + (e?.message || e);
+      console.error("FIREBASE ERROR:", e);
     }
   });
 </script>
 
 </body>
 </html>
-
